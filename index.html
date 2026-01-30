@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evolución de Precios: GMKtec EVO-X2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@3.0.0/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; }
+        .chart-container { position: relative; height: 60vh; width: 100%; }
+        .table-container { margin-top: 40px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+    <h1>Evolución de Precios: GMKtec EVO-X2</h1>
+
+    <div class="chart-container">
+        <canvas id="priceChart"></canvas>
+    </div>
+
+    <div class="table-container">
+        <h2>Últimos Precios</h2>
+        <table id="priceTable">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Variante</th>
+                    <th>Tienda</th>
+                    <th>Precio</th>
+                    <th>Enlace</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be inserted here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function loadData() {
+            try {
+                const response = await fetch('data/prices.json');
+                const data = await response.json();
+
+                if (!data || data.length === 0) {
+                    console.log("No data found");
+                    return;
+                }
+
+                renderChart(data);
+                renderTable(data);
+            } catch (error) {
+                console.error("Error loading data:", error);
+            }
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            // Group data by variant + site
+            const datasets = {};
+
+            data.forEach(entry => {
+                const label = `${entry.variant} - ${entry.site}`;
+                if (!datasets[label]) {
+                    datasets[label] = {
+                        label: label,
+                        data: [],
+                        borderColor: getColor(label),
+                        fill: false,
+                        tension: 0.1
+                    };
+                }
+                datasets[label].data.push({
+                    x: entry.timestamp,
+                    y: entry.price
+                });
+            });
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: Object.values(datasets)
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                tooltipFormat: 'yyyy-MM-dd HH:mm'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Fecha'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Precio (€)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y + ' €';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTable(data) {
+            const tbody = document.querySelector('#priceTable tbody');
+            // Show last 20 entries, sorted by date desc
+            const sortedData = [...data].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 20);
+
+            sortedData.forEach(entry => {
+                const row = document.createElement('tr');
+                const date = new Date(entry.timestamp).toLocaleString();
+                row.innerHTML = `
+                    <td>${date}</td>
+                    <td>${entry.variant}</td>
+                    <td>${entry.site}</td>
+                    <td>${entry.price} €</td>
+                    <td><a href="${entry.url}" target="_blank">Ver</a></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Helper to generate consistent colors based on string
+        function getColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+            return '#' + '00000'.substring(0, 6 - c.length) + c;
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
