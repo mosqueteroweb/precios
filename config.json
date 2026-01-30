@@ -1,0 +1,16 @@
+[
+  {
+    "active": false,
+    "variant": "96GB",
+    "site_name": "Amazon Example",
+    "url": "https://www.amazon.es/dp/EXAMPLE",
+    "selector": "#corePrice_feature_div .a-offscreen"
+  },
+  {
+    "active": false,
+    "variant": "128GB",
+    "site_name": "PcComponentes Example",
+    "url": "https://www.pccomponentes.com/EXAMPLE",
+    "selector": ".price-card__price"
+  }
+]
