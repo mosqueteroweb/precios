@@ -5,7 +5,7 @@ Este proyecto monitoriza automáticamente los precios del mini PC GMKtec EVO-X2 
 ## Funcionalidades
 
 - **Scraping Automático:** Se ejecuta 2 veces al día (9:00 y 21:00 UTC) mediante GitHub Actions.
-- **Alertas por Email:** Envía un correo electrónico si el precio baja de un umbral definido.
+- **Alertas por Telegram:** Envía un mensaje instantáneo si el precio baja de un umbral definido.
 - **Visualización:** Gráfica interactiva de precios con historial.
 - **Persistencia:** Los datos se guardan en un archivo JSON en el repositorio.
 
@@ -19,15 +19,26 @@ Este proyecto monitoriza automáticamente los precios del mini PC GMKtec EVO-X2 
 
 ## Configuración y Uso
 
-### 1. Configurar Alertas de Email (Opcional)
+### 1. Configurar Alertas de Telegram
 
-Para recibir alertas, necesitas configurar dos "Secretos" en tu repositorio de GitHub:
+Para recibir alertas en tu móvil, sigue estos pasos:
 
-1. Ve a **Settings** > **Secrets and variables** > **Actions**.
+#### A. Crear el Bot
+1. Abre Telegram y busca a **@BotFather**.
+2. Envía el comando `/newbot`.
+3. Sigue las instrucciones para ponerle nombre.
+4. Al finalizar, te dará un **API TOKEN** (algo como `123456789:ABCdefGHI...`). Guárdalo.
+
+#### B. Obtener tu Chat ID
+1. Abre Telegram y busca a **@userinfobot**.
+2. Dale a "Start" o envía cualquier mensaje.
+3. Te responderá con tu ID (un número tipo `12345678`). Guárdalo.
+
+#### C. Configurar Secretos en GitHub
+1. En tu repositorio, ve a **Settings** > **Secrets and variables** > **Actions**.
 2. Haz clic en **New repository secret**.
-3. Crea `EMAIL_USER`: Tu dirección de Gmail (ej: `tuemail@gmail.com`).
-4. Crea `EMAIL_PASS`: Tu contraseña de aplicación de Google.
-   - *Nota:* No uses tu contraseña normal. Ve a [Google Account > Seguridad > Verificación en dos pasos > Contraseñas de aplicaciones](https://myaccount.google.com/apppasswords) y genera una nueva.
+3. Crea `TELEGRAM_BOT_TOKEN` con el token del paso A.
+4. Crea `TELEGRAM_CHAT_ID` con el ID del paso B.
 
 ### 2. Añadir productos
 
@@ -43,8 +54,7 @@ Ejemplo:
     "site_name": "GMKtec Official",
     "url": "https://de.gmktec.com/...",
     "target_ram": "96GB",
-    "target_price": 1700,
-    "recipient_email": "tucorreo@gmail.com"
+    "target_price": 1700
   },
   {
     "active": true,
@@ -52,8 +62,7 @@ Ejemplo:
     "site_name": "PcComponentes",
     "url": "https://www.pccomponentes.com/...",
     "selector": "#precio-main",
-    "target_price": 2200,
-    "recipient_email": "tucorreo@gmail.com"
+    "target_price": 2200
   }
 ]
 ```
@@ -67,10 +76,10 @@ Si quieres probar el scraper en tu máquina:
    pip install -r requirements.txt
    playwright install chromium
    ```
-2. Configura las variables de entorno para el email (opcional):
+2. Configura las variables de entorno para Telegram (opcional):
    ```bash
-   export EMAIL_USER="tuemail@gmail.com"
-   export EMAIL_PASS="tu_contraseña_app"
+   export TELEGRAM_BOT_TOKEN="tu_token"
+   export TELEGRAM_CHAT_ID="tu_chat_id"
    ```
 3. Ejecuta el script:
    ```bash

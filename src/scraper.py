@@ -2,54 +2,53 @@ import json
 import re
 import datetime
 import asyncio
-import smtplib
-from email.message import EmailMessage
+import requests
 from playwright.async_api import async_playwright
 import os
 
 CONFIG_FILE = 'config.json'
 DATA_FILE = 'data/prices.json'
 
-def send_email_alert(item, price):
+def send_telegram_alert(item, price):
     """
-    Sends an email alert when price drops below target.
+    Sends a Telegram alert when price drops below target.
     """
-    recipient = item.get('recipient_email')
     variant = item.get('target_ram', item.get('variant', 'Unknown'))
     site_name = item.get('site_name')
     url = item.get('url')
+    target_price = item.get('target_price')
 
-    sender_email = os.environ.get('EMAIL_USER')
-    sender_password = os.environ.get('EMAIL_PASS')
+    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
 
-    if not sender_email or not sender_password:
-        print("Skipping email alert: EMAIL_USER or EMAIL_PASS not set.")
+    if not bot_token or not chat_id:
+        print("Skipping Telegram alert: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set.")
         return
 
-    msg = EmailMessage()
-    msg.set_content(f"""
-    ¡Bajada de precio detectada!
+    message = (
+        f"🚨 **BAJADA DE PRECIO** 🚨\n\n"
+        f"📦 **Producto:** GMKtec EVO-X2 ({variant})\n"
+        f"🏪 **Tienda:** {site_name}\n"
+        f"💰 **Precio Actual:** {price} €\n"
+        f"🎯 **Objetivo:** {target_price} €\n\n"
+        f"🔗 [Ver Oferta]({url})"
+    )
 
-    Producto: GMKtec EVO-X2 ({variant})
-    Tienda: {site_name}
-    Precio Actual: {price} €
-    Precio Objetivo: {item.get('target_price')} €
-
-    Enlace: {url}
-    """)
-
-    msg['Subject'] = f"ALERTA PRECIO: GMKtec {variant} a {price} €"
-    msg['From'] = sender_email
-    msg['To'] = recipient
+    api_url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": "Markdown"
+    }
 
     try:
-        # Connect to Gmail SMTP
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(sender_email, sender_password)
-            server.send_message(msg)
-        print(f"Email alert sent to {recipient} for {variant} at {price}€")
+        response = requests.post(api_url, json=payload, timeout=10)
+        if response.status_code == 200:
+            print(f"Telegram alert sent for {variant} at {price}€")
+        else:
+            print(f"Failed to send Telegram alert: {response.text}")
     except Exception as e:
-        print(f"Error sending email: {e}")
+        print(f"Error sending Telegram alert: {e}")
 
 def parse_price(price_str):
     """
@@ -272,7 +271,7 @@ async def scrape_gmktec_official(page, item):
         target_price = item.get('target_price')
         if target_price and final_price <= target_price:
             print(f"Price {final_price} is below target {target_price}! Sending alert...")
-            send_email_alert(item, final_price)
+            send_telegram_alert(item, final_price)
 
         return {
             "timestamp": datetime.datetime.now().isoformat(),
@@ -323,7 +322,7 @@ async def scrape_site(page, item):
             target_price = item.get('target_price')
             if price and target_price and price <= target_price:
                 print(f"Price {price} is below target {target_price}! Sending alert...")
-                send_email_alert(item, price)
+                send_telegram_alert(item, price)
 
             return {
                 "timestamp": datetime.datetime.now().isoformat(),
