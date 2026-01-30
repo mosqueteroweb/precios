@@ -27,6 +27,9 @@ jobs:
           playwright install chromium
 
       - name: Run scraper
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
         run: python src/scraper.py
 
       - name: Commit and push changes

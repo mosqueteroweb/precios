@@ -5,12 +5,13 @@ Este proyecto monitoriza automáticamente los precios del mini PC GMKtec EVO-X2 
 ## Funcionalidades
 
 - **Scraping Automático:** Se ejecuta 2 veces al día (9:00 y 21:00 UTC) mediante GitHub Actions.
+- **Alertas por Email:** Envía un correo electrónico si el precio baja de un umbral definido.
 - **Visualización:** Gráfica interactiva de precios con historial.
 - **Persistencia:** Los datos se guardan en un archivo JSON en el repositorio.
 
 ## Estructura del proyecto
 
-- `config.json`: Archivo de configuración donde defines las URLs a monitorizar.
+- `config.json`: Archivo de configuración donde defines las URLs a monitorizar y precios objetivo.
 - `data/prices.json`: Base de datos histórica (formato JSON).
 - `src/scraper.py`: Script Python que realiza el scraping usando Playwright.
 - `index.html`: Página web estática para visualizar los datos.
@@ -18,37 +19,46 @@ Este proyecto monitoriza automáticamente los precios del mini PC GMKtec EVO-X2 
 
 ## Configuración y Uso
 
-### 1. Añadir productos
+### 1. Configurar Alertas de Email (Opcional)
 
-Edita el archivo `config.json` para añadir las URLs que quieres seguir. Ejemplo:
+Para recibir alertas, necesitas configurar dos "Secretos" en tu repositorio de GitHub:
+
+1. Ve a **Settings** > **Secrets and variables** > **Actions**.
+2. Haz clic en **New repository secret**.
+3. Crea `EMAIL_USER`: Tu dirección de Gmail (ej: `tuemail@gmail.com`).
+4. Crea `EMAIL_PASS`: Tu contraseña de aplicación de Google.
+   - *Nota:* No uses tu contraseña normal. Ve a [Google Account > Seguridad > Verificación en dos pasos > Contraseñas de aplicaciones](https://myaccount.google.com/apppasswords) y genera una nueva.
+
+### 2. Añadir productos
+
+Edita el archivo `config.json` para añadir las URLs que quieres seguir y el precio objetivo para alertas (`target_price`).
+
+Ejemplo:
 
 ```json
 [
   {
     "active": true,
-    "variant": "96GB",
-    "site_name": "Amazon",
-    "url": "https://www.amazon.es/dp/B0CX...",
-    "selector": ".a-price-whole"
+    "type": "gmktec_official",
+    "site_name": "GMKtec Official",
+    "url": "https://de.gmktec.com/...",
+    "target_ram": "96GB",
+    "target_price": 1700,
+    "recipient_email": "tucorreo@gmail.com"
   },
   {
     "active": true,
     "variant": "128GB",
     "site_name": "PcComponentes",
     "url": "https://www.pccomponentes.com/...",
-    "selector": "#precio-main"
+    "selector": "#precio-main",
+    "target_price": 2200,
+    "recipient_email": "tucorreo@gmail.com"
   }
 ]
 ```
 
-**Consejo para encontrar selectores:**
-1. Abre la web del producto en tu navegador (Chrome/Firefox).
-2. Haz clic derecho sobre el precio y selecciona "Inspeccionar".
-3. Busca el atributo `class` o `id` del elemento que contiene el precio.
-   - Si es una clase (ej: `class="price"`), usa `.price`.
-   - Si es un ID (ej: `id="product-price"`), usa `#product-price`.
-
-### 2. Ejecutar localmente (Pruebas)
+### 3. Ejecutar localmente (Pruebas)
 
 Si quieres probar el scraper en tu máquina:
 
@@ -57,17 +67,22 @@ Si quieres probar el scraper en tu máquina:
    pip install -r requirements.txt
    playwright install chromium
    ```
-2. Ejecuta el script:
+2. Configura las variables de entorno para el email (opcional):
+   ```bash
+   export EMAIL_USER="tuemail@gmail.com"
+   export EMAIL_PASS="tu_contraseña_app"
+   ```
+3. Ejecuta el script:
    ```bash
    python src/scraper.py
    ```
-3. Para ver la gráfica localmente (debido a restricciones de seguridad del navegador con archivos locales), necesitas iniciar un servidor simple:
+4. Para ver la gráfica localmente (debido a restricciones de seguridad del navegador con archivos locales), necesitas iniciar un servidor simple:
    ```bash
    python -m http.server
    ```
    Luego abre `http://localhost:8000` en tu navegador.
 
-### 3. Despliegue en GitHub Pages
+### 4. Despliegue en GitHub Pages
 
 Para ver la gráfica online:
 1. Sube este código a GitHub.

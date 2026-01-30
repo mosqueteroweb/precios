@@ -2,11 +2,54 @@ import json
 import re
 import datetime
 import asyncio
+import smtplib
+from email.message import EmailMessage
 from playwright.async_api import async_playwright
 import os
 
 CONFIG_FILE = 'config.json'
 DATA_FILE = 'data/prices.json'
+
+def send_email_alert(item, price):
+    """
+    Sends an email alert when price drops below target.
+    """
+    recipient = item.get('recipient_email')
+    variant = item.get('target_ram', item.get('variant', 'Unknown'))
+    site_name = item.get('site_name')
+    url = item.get('url')
+
+    sender_email = os.environ.get('EMAIL_USER')
+    sender_password = os.environ.get('EMAIL_PASS')
+
+    if not sender_email or not sender_password:
+        print("Skipping email alert: EMAIL_USER or EMAIL_PASS not set.")
+        return
+
+    msg = EmailMessage()
+    msg.set_content(f"""
+    ¡Bajada de precio detectada!
+
+    Producto: GMKtec EVO-X2 ({variant})
+    Tienda: {site_name}
+    Precio Actual: {price} €
+    Precio Objetivo: {item.get('target_price')} €
+
+    Enlace: {url}
+    """)
+
+    msg['Subject'] = f"ALERTA PRECIO: GMKtec {variant} a {price} €"
+    msg['From'] = sender_email
+    msg['To'] = recipient
+
+    try:
+        # Connect to Gmail SMTP
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+        print(f"Email alert sent to {recipient} for {variant} at {price}€")
+    except Exception as e:
+        print(f"Error sending email: {e}")
 
 def parse_price(price_str):
     """
@@ -53,16 +96,23 @@ async def scrape_gmktec_official(page, item):
 
         # 0. Close Geolocation/Language Modal if present
         # "ts-geo-modal" intercepts pointer events
+        # Wait a bit for it to appear
+        await page.wait_for_timeout(2000)
+
         try:
             # Try to find a close button or similar
             # Or just remove the element from DOM
             await page.evaluate("""
-                const modal = document.getElementById('ts-geo-modal');
-                if (modal) modal.remove();
-                const backdrop = document.querySelector('.ts-geo-modal__backdrop');
-                if (backdrop) backdrop.remove();
-                const container = document.getElementById('ts-geo');
-                if (container) container.remove();
+                const removeElement = (sel) => {
+                    const el = document.querySelector(sel);
+                    if (el) el.remove();
+                };
+                removeElement('#ts-geo-modal');
+                removeElement('.ts-geo-modal__backdrop');
+                removeElement('#ts-geo');
+                // Also remove any other potential overlays
+                removeElement('.popup-overlay');
+                removeElement('.modal-backdrop');
             """)
             print("Removed geo modal/blockers.")
         except Exception as e:
@@ -150,8 +200,8 @@ async def scrape_gmktec_official(page, item):
         # Extract potential prices
         # Find all strings looking like prices
         prices_found = []
-        # Simple regex to find € amounts
-        matches = re.findall(r'€\s?[\d.,]+', price_text)
+        # Simple regex to find € amounts (prefix or suffix)
+        matches = re.findall(r'€\s?[\d.,]+|[\d.,]+\s?€', price_text)
         for m in matches:
             v = parse_price(m)
             if v and v > 100: # Filter out small amounts like shipping or monthly installments
@@ -218,6 +268,12 @@ async def scrape_gmktec_official(page, item):
         final_price = base_price - discount_amount
         print(f"Final Price: {final_price} (Base: {base_price} - Discount: {discount_amount})")
 
+        # Alert Check
+        target_price = item.get('target_price')
+        if target_price and final_price <= target_price:
+            print(f"Price {final_price} is below target {target_price}! Sending alert...")
+            send_email_alert(item, final_price)
+
         return {
             "timestamp": datetime.datetime.now().isoformat(),
             "variant": target_ram,
@@ -262,6 +318,13 @@ async def scrape_site(page, item):
             text = await element.inner_text()
             price = parse_price(text)
             print(f"Found price: {price}")
+
+            # Alert Check
+            target_price = item.get('target_price')
+            if price and target_price and price <= target_price:
+                print(f"Price {price} is below target {target_price}! Sending alert...")
+                send_email_alert(item, price)
+
             return {
                 "timestamp": datetime.datetime.now().isoformat(),
                 "variant": variant,
