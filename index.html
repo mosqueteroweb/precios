@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evolución de Precios: GMKtec EVO-X2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; }
+        .chart-container { position: relative; height: 60vh; width: 100%; }
+        .table-container { margin-top: 40px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .view-more-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #f2f2f2;
+            border: 1px solid #ddd;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .view-more-btn:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Evolución de Precios: GMKtec EVO-X2</h1>
+
+    <div class="chart-container">
+        <canvas id="priceChart"></canvas>
+    </div>
+
+    <div class="table-container">
+        <h2>Últimos Precios</h2>
+        <table id="priceTable">
+            <thead>
+                <tr>
+                    <th>Fecha (Madrid)</th>
+                    <th>Variante</th>
+                    <th>Tienda</th>
+                    <th>Precio</th>
+                    <th>Enlace</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be inserted here -->
+            </tbody>
+        </table>
+        <button id="viewMoreBtn" class="view-more-btn" style="display: none;">Ver más datos</button>
+    </div>
+
+    <script>
+        let allData = [];
+        let shownCount = 20;
+
+        async function loadData() {
+            try {
+                const response = await fetch('data/prices.json');
+                const data = await response.json();
+
+                if (!data || data.length === 0) {
+                    console.log("No data found");
+                    return;
+                }
+
+                // Store for table pagination
+                // Sort by date desc for the table
+                allData = [...data].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                renderChart(data); // Chart uses chronological data
+                renderTable();
+            } catch (error) {
+                console.error("Error loading data:", error);
+            }
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            // Group data by variant + site
+            const datasets = {};
+
+            // Sort chronological just in case
+            const chronoData = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            chronoData.forEach(entry => {
+                const label = `${entry.variant} - ${entry.site}`;
+                if (!datasets[label]) {
+                    // Assign specific colors
+                    let color = '#36A2EB'; // Default Blue
+                    if (entry.variant.includes('96GB')) {
+                        color = '#4BC0C0'; // Green
+                    } else if (entry.variant.includes('128GB')) {
+                        color = '#36A2EB'; // Blue
+                    }
+
+                    datasets[label] = {
+                        label: label,
+                        data: [],
+                        borderColor: color,
+                        backgroundColor: color,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: [],
+                        pointBackgroundColor: [],
+                        pointBorderColor: []
+                    };
+                }
+                datasets[label].data.push({
+                    x: entry.timestamp,
+                    y: entry.price
+                });
+            });
+
+            // Process highlights for minimum price
+            Object.values(datasets).forEach(dataset => {
+                if (dataset.data.length === 0) return;
+
+                // Find minimum price
+                let minPrice = dataset.data[0].y;
+                dataset.data.forEach(point => {
+                    if (point.y < minPrice) minPrice = point.y;
+                });
+
+                // Find FIRST occurrence of minimum price
+                let firstMinIndex = -1;
+                for (let i = 0; i < dataset.data.length; i++) {
+                    if (dataset.data[i].y === minPrice) {
+                        firstMinIndex = i;
+                        break; // Stop at first
+                    }
+                }
+
+                // Set point styles
+                dataset.data.forEach((point, index) => {
+                    if (index === firstMinIndex) {
+                        // Highlight
+                        dataset.pointRadius.push(8);
+                        dataset.pointBackgroundColor.push('red');
+                        dataset.pointBorderColor.push('red');
+                    } else {
+                        // Normal
+                        dataset.pointRadius.push(3);
+                        dataset.pointBackgroundColor.push(dataset.backgroundColor); // Use line color
+                        dataset.pointBorderColor.push(dataset.borderColor);
+                    }
+                });
+            });
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: Object.values(datasets)
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                tooltipFormat: 'yyyy-MM-dd HH:mm'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Fecha'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Precio (€)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y + ' €';
+                                    }
+                                    // Add indication if it's the highlighted min
+                                    if (context.element.options.radius === 8) {
+                                        label += ' (Mínimo Histórico)';
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        legend: {
+                            labels: {
+                                usePointStyle: true
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.querySelector('#priceTable tbody');
+            const btn = document.getElementById('viewMoreBtn');
+
+            // Clear current table rows to avoid duplication on re-render (though we append currently)
+            // But logic: render from 0 to shownCount.
+            tbody.innerHTML = '';
+
+            const visibleData = allData.slice(0, shownCount);
+
+            visibleData.forEach(entry => {
+                const row = document.createElement('tr');
+
+                // Format date for Madrid
+                const dateOpts = {
+                    timeZone: 'Europe/Madrid',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                };
+                const dateStr = new Date(entry.timestamp).toLocaleString('es-ES', dateOpts);
+
+                row.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>${entry.variant}</td>
+                    <td>${entry.site}</td>
+                    <td>${entry.price} €</td>
+                    <td><a href="${entry.url}" target="_blank">Ver</a></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Show/Hide button
+            if (shownCount < allData.length) {
+                btn.style.display = 'block';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        document.getElementById('viewMoreBtn').addEventListener('click', () => {
+            shownCount += 20;
+            renderTable();
+        });
+
+        loadData();
+    </script>
+</body>
+</html>
