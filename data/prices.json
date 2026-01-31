@@ -1,1 +1,34 @@
-[]
+[
+  {
+    "timestamp": "2026-01-31T08:03:52.136528",
+    "variant": "96GB",
+    "site": "GMKtec Official",
+    "price": 109.0,
+    "url": "https://de.gmktec.com/es/products/gmktec-evo-x2-amd-ryzen%E2%84%A2-ai-max-395-mini-pc-1",
+    "metadata": {
+      "base_price": 159.0,
+      "discount_applied": 50.0,
+      "coupons_found": [
+        "GMKEVO50OFF",
+        "GMKTEC",
+        "GMKtec"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-01-31T08:04:04.660794",
+    "variant": "128GB",
+    "site": "GMKtec Official",
+    "price": 109.0,
+    "url": "https://de.gmktec.com/es/products/gmktec-evo-x2-amd-ryzen%E2%84%A2-ai-max-395-mini-pc-1",
+    "metadata": {
+      "base_price": 159.0,
+      "discount_applied": 50.0,
+      "coupons_found": [
+        "GMKEVO50OFF",
+        "GMKTEC",
+        "GMKtec"
+      ]
+    }
+  }
+]
