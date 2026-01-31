@@ -185,33 +185,59 @@ async def scrape_gmktec_official(page, item):
              # We want the lowest one visible in the main product area.
              pass
 
-        # Let's get the text from the price area
-        # Often Shopify puts current price in .price--sale or similar.
-        # We will extract all visible prices in the product block and take the lowest non-zero one.
-        # Limiting to the main product section to avoid related products.
+        # Strategy: Look for "Subtotal" or similar explicit price indicators first
+        base_price = None
 
-        main_product = await page.query_selector('.product-main, .product-info') # Guessing container
-        if main_product:
-             price_text = await main_product.inner_text()
-        else:
-             price_text = await page.inner_text('body') # Fallback
+        # Try to find "Subtotal" element
+        # Based on inspection: "Subtotal: 1.859,00 €"
+        # We look for an element containing "Subtotal" and extract the price from it or its parent
+        try:
+            subtotal_el = page.get_by_text("Subtotal", exact=False).first
+            if await subtotal_el.is_visible():
+                # Get text of parent to catch "Subtotal: 1234 €" if they are in same block
+                # or the element itself
+                text = await subtotal_el.inner_text()
+                # If text is just "Subtotal:", try parent or next sibling
+                if len(text.strip()) < 15:
+                    parent_text = await subtotal_el.evaluate("el => el.parentElement.innerText")
+                    text = parent_text
 
-        # Extract potential prices
-        # Find all strings looking like prices
-        prices_found = []
-        # Simple regex to find € amounts (prefix or suffix)
-        matches = re.findall(r'€\s?[\d.,]+|[\d.,]+\s?€', price_text)
-        for m in matches:
-            v = parse_price(m)
-            if v and v > 100: # Filter out small amounts like shipping or monthly installments
-                prices_found.append(v)
+                print(f"Found Subtotal text: {text.strip()}")
+                matches = re.findall(r'€\s?[\d.,]+|[\d.,]+\s?€', text)
+                for m in matches:
+                    v = parse_price(m)
+                    if v and v > 100: # Sanity check
+                        base_price = v
+                        print(f"Extracted base price from Subtotal: {base_price}")
+                        break
+        except Exception as e:
+            print(f"Error finding subtotal: {e}")
 
-        if not prices_found:
-            print("No price found on page.")
+        # Fallback: Find all prices in main product area if Subtotal failed
+        if not base_price:
+            print("Subtotal not found, falling back to all prices...")
+            main_product = await page.query_selector('.product-main, .product-info')
+            if main_product:
+                 price_text = await main_product.inner_text()
+            else:
+                 price_text = await page.inner_text('body')
+
+            prices_found = []
+            matches = re.findall(r'€\s?[\d.,]+|[\d.,]+\s?€', price_text)
+            for m in matches:
+                v = parse_price(m)
+                # Filter out "159" (menu/flash deals) and small amounts
+                # We know this product is expensive (>1000€ usually, or at least >500)
+                if v and v > 500:
+                    prices_found.append(v)
+
+            if prices_found:
+                base_price = min(prices_found)
+                print(f"Fallback base price (min > 500): {base_price}")
+
+        if not base_price:
+            print("No valid price found on page.")
             return None
-
-        # The current price is usually the lowest one (sale price)
-        base_price = min(prices_found)
         print(f"Base price found: {base_price}")
 
         # 3. Check for coupons
