@@ -408,14 +408,22 @@ async def main():
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
 
-        page = await context.new_page()
+        # Concurrency control
+        sem = asyncio.Semaphore(5)
 
-        new_data = []
-        for item in active_items:
-            result = await scrape_site(page, item)
-            if result:
-                new_data.append(result)
-            await asyncio.sleep(2)
+        async def scrape_worker(item):
+            async with sem:
+                page = await context.new_page()
+                try:
+                    return await scrape_site(page, item)
+                finally:
+                    await page.close()
+
+        tasks = [scrape_worker(item) for item in active_items]
+        results = await asyncio.gather(*tasks)
+
+        # Filter None results
+        new_data = [r for r in results if r]
 
         await browser.close()
 
