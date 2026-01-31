@@ -9,7 +9,10 @@ import os
 CONFIG_FILE = 'config.json'
 DATA_FILE = 'data/prices.json'
 
-async def send_telegram_alert(item, price):
+# Compile regex at module level for performance
+COUPON_PATTERN = re.compile(r'(GMK\w+)')
+
+def send_telegram_alert(item, price):
     """
     Sends a Telegram alert when price drops below target.
     """
@@ -274,7 +277,7 @@ async def scrape_gmktec_official(page, item):
         # "Save €20 when you buy 2" -> User said ignore bulk discounts.
 
         # Heuristic: Find codes like "GMK..." followed by numbers
-        coupon_matches = re.findall(r'(GMK\w+)', full_text)
+        coupon_matches = COUPON_PATTERN.findall(full_text)
         unique_coupons = set(coupon_matches)
 
         for coupon in unique_coupons:
