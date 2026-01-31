@@ -45,7 +45,11 @@ def send_telegram_alert(item, price):
     }
 
     try:
-        response = requests.post(api_url, json=payload, timeout=10)
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.post(api_url, json=payload, timeout=10)
+        )
         if response.status_code == 200:
             print(f"Telegram alert sent for {variant} at {price}€")
         else:
@@ -82,6 +86,38 @@ def parse_price(price_str):
     except ValueError:
         return None
 
+async def remove_geo_modal(page):
+    """
+    Attempts to close/remove the Geolocation/Language modal and other blockers.
+    """
+    # "ts-geo-modal" intercepts pointer events
+    # Wait a bit for it to appear (up to 2s), but proceed immediately if found
+    blocker_selector = '#ts-geo-modal, .ts-geo-modal__backdrop, #ts-geo, .popup-overlay, .modal-backdrop'
+    try:
+        await page.wait_for_selector(blocker_selector, timeout=2000, state='attached')
+    except Exception:
+        # Timeout means not found within 2s, proceed anyway to cleanup attempts
+        pass
+
+    try:
+        # Try to find a close button or similar
+        # Or just remove the element from DOM
+        await page.evaluate("""
+            const removeElement = (sel) => {
+                const el = document.querySelector(sel);
+                if (el) el.remove();
+            };
+            removeElement('#ts-geo-modal');
+            removeElement('.ts-geo-modal__backdrop');
+            removeElement('#ts-geo');
+            // Also remove any other potential overlays
+            removeElement('.popup-overlay');
+            removeElement('.modal-backdrop');
+        """)
+        print("Removed geo modal/blockers.")
+    except Exception as e:
+        print(f"Error removing modal: {e}")
+
 async def scrape_gmktec_official(page, item):
     """
     Specific scraping logic for official GMKtec site.
@@ -97,28 +133,7 @@ async def scrape_gmktec_official(page, item):
         await page.goto(url, timeout=60000)
 
         # 0. Close Geolocation/Language Modal if present
-        # "ts-geo-modal" intercepts pointer events
-        # Wait a bit for it to appear
-        await page.wait_for_timeout(2000)
-
-        try:
-            # Try to find a close button or similar
-            # Or just remove the element from DOM
-            await page.evaluate("""
-                const removeElement = (sel) => {
-                    const el = document.querySelector(sel);
-                    if (el) el.remove();
-                };
-                removeElement('#ts-geo-modal');
-                removeElement('.ts-geo-modal__backdrop');
-                removeElement('#ts-geo');
-                // Also remove any other potential overlays
-                removeElement('.popup-overlay');
-                removeElement('.modal-backdrop');
-            """)
-            print("Removed geo modal/blockers.")
-        except Exception as e:
-            print(f"Error removing modal: {e}")
+        await remove_geo_modal(page)
 
         # 1. Select Variant
         # Find label containing the target RAM
@@ -300,7 +315,7 @@ async def scrape_gmktec_official(page, item):
         target_price = item.get('target_price')
         if target_price and final_price <= target_price:
             print(f"Price {final_price} is below target {target_price}! Sending alert...")
-            send_telegram_alert(item, final_price)
+            await send_telegram_alert(item, final_price)
 
         return {
             "timestamp": datetime.datetime.now().isoformat(),
@@ -351,7 +366,7 @@ async def scrape_site(page, item):
             target_price = item.get('target_price')
             if price and target_price and price <= target_price:
                 print(f"Price {price} is below target {target_price}! Sending alert...")
-                send_telegram_alert(item, price)
+                await send_telegram_alert(item, price)
 
             return {
                 "timestamp": datetime.datetime.now().isoformat(),
@@ -396,14 +411,22 @@ async def main():
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
 
-        page = await context.new_page()
+        # Concurrency control
+        sem = asyncio.Semaphore(5)
 
-        new_data = []
-        for item in active_items:
-            result = await scrape_site(page, item)
-            if result:
-                new_data.append(result)
-            await asyncio.sleep(2)
+        async def scrape_worker(item):
+            async with sem:
+                page = await context.new_page()
+                try:
+                    return await scrape_site(page, item)
+                finally:
+                    await page.close()
+
+        tasks = [scrape_worker(item) for item in active_items]
+        results = await asyncio.gather(*tasks)
+
+        # Filter None results
+        new_data = [r for r in results if r]
 
         await browser.close()
 
