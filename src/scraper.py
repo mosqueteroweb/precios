@@ -334,6 +334,75 @@ async def scrape_gmktec_official(page, item):
         print(f"Error scraping GMKtec {target_ram}: {e}")
         return None
 
+def clean_price_history(history_data, reference_date=None):
+    """
+    Cleans up history data.
+    - Keeps all records from the last 2 weeks (relative to reference_date).
+    - For older records, keeps only the lowest price record per week per variant.
+    """
+    if not history_data:
+        return []
+
+    if reference_date is None:
+        reference_date = datetime.datetime.now()
+
+    cutoff_date = reference_date - datetime.timedelta(weeks=2)
+
+    recent_data = []
+    old_data = []
+
+    for record in history_data:
+        try:
+            ts = datetime.datetime.fromisoformat(record['timestamp'])
+            # Assuming naive timestamps as per existing data
+            if ts >= cutoff_date:
+                recent_data.append(record)
+            else:
+                old_data.append(record)
+        except (ValueError, KeyError):
+            # If timestamp is invalid or missing, keep it in recent to avoid data loss
+            recent_data.append(record)
+
+    if not old_data:
+        return sorted(recent_data, key=lambda x: x.get('timestamp', ''))
+
+    # Process old data: Group by (variant, site, year, week)
+    grouped = {}
+    for record in old_data:
+        try:
+            ts = datetime.datetime.fromisoformat(record['timestamp'])
+            year, week, _ = ts.isocalendar()
+            variant = record.get('variant', 'Unknown')
+            site = record.get('site', 'Unknown')
+
+            key = (variant, site, year, week)
+
+            if key not in grouped:
+                grouped[key] = record
+            else:
+                # Keep the one with lower price
+                current_min = grouped[key]
+                p_current = current_min.get('price')
+                p_new = record.get('price')
+
+                # specific logic: if price is None, treat as infinite (worst)
+                if p_current is None: p_current = float('inf')
+                if p_new is None: p_new = float('inf')
+
+                if p_new < p_current:
+                    grouped[key] = record
+        except Exception:
+             # If error processing, keep it safe
+             recent_data.append(record)
+
+    cleaned_old_data = list(grouped.values())
+
+    # Merge and sort
+    final_history = recent_data + cleaned_old_data
+    final_history.sort(key=lambda x: x.get('timestamp', ''))
+
+    return final_history
+
 async def scrape_site(page, item):
     """
     Scrapes a single item. Dispatches to specific logic if needed.
@@ -432,11 +501,16 @@ async def main():
 
     if new_data:
         history.extend(new_data)
-        history.sort(key=lambda x: x['timestamp'])
+
+        # Cleanup old data
+        history = clean_price_history(history)
+
+        # Sort is ensured by clean_price_history but explicit sort is fine too
+        # history.sort(key=lambda x: x['timestamp'])
 
         with open(DATA_FILE, 'w') as f:
             json.dump(history, f, indent=2)
-        print(f"Saved {len(new_data)} new price records.")
+        print(f"Saved {len(new_data)} new price records. History size: {len(history)}")
     else:
         print("No new data found.")
 
