@@ -83,6 +83,38 @@ def parse_price(price_str):
     except ValueError:
         return None
 
+async def remove_geo_modal(page):
+    """
+    Attempts to close/remove the Geolocation/Language modal and other blockers.
+    """
+    # "ts-geo-modal" intercepts pointer events
+    # Wait a bit for it to appear (up to 2s), but proceed immediately if found
+    blocker_selector = '#ts-geo-modal, .ts-geo-modal__backdrop, #ts-geo, .popup-overlay, .modal-backdrop'
+    try:
+        await page.wait_for_selector(blocker_selector, timeout=2000, state='attached')
+    except Exception:
+        # Timeout means not found within 2s, proceed anyway to cleanup attempts
+        pass
+
+    try:
+        # Try to find a close button or similar
+        # Or just remove the element from DOM
+        await page.evaluate("""
+            const removeElement = (sel) => {
+                const el = document.querySelector(sel);
+                if (el) el.remove();
+            };
+            removeElement('#ts-geo-modal');
+            removeElement('.ts-geo-modal__backdrop');
+            removeElement('#ts-geo');
+            // Also remove any other potential overlays
+            removeElement('.popup-overlay');
+            removeElement('.modal-backdrop');
+        """)
+        print("Removed geo modal/blockers.")
+    except Exception as e:
+        print(f"Error removing modal: {e}")
+
 async def scrape_gmktec_official(page, item):
     """
     Specific scraping logic for official GMKtec site.
@@ -98,28 +130,7 @@ async def scrape_gmktec_official(page, item):
         await page.goto(url, timeout=60000)
 
         # 0. Close Geolocation/Language Modal if present
-        # "ts-geo-modal" intercepts pointer events
-        # Wait a bit for it to appear
-        await page.wait_for_timeout(2000)
-
-        try:
-            # Try to find a close button or similar
-            # Or just remove the element from DOM
-            await page.evaluate("""
-                const removeElement = (sel) => {
-                    const el = document.querySelector(sel);
-                    if (el) el.remove();
-                };
-                removeElement('#ts-geo-modal');
-                removeElement('.ts-geo-modal__backdrop');
-                removeElement('#ts-geo');
-                // Also remove any other potential overlays
-                removeElement('.popup-overlay');
-                removeElement('.modal-backdrop');
-            """)
-            print("Removed geo modal/blockers.")
-        except Exception as e:
-            print(f"Error removing modal: {e}")
+        await remove_geo_modal(page)
 
         # 1. Select Variant
         # Find label containing the target RAM
