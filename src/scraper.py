@@ -12,7 +12,7 @@ DATA_FILE = 'data/prices.json'
 # Compile regex at module level for performance
 COUPON_PATTERN = re.compile(r'(GMK\w+)')
 
-def send_telegram_alert(item, price):
+async def send_telegram_alert(item, price):
     """
     Sends a Telegram alert when price drops below target.
     """
