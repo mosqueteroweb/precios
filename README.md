@@ -67,7 +67,26 @@ Ejemplo:
 ]
 ```
 
-### 3. Ejecutar localmente (Pruebas)
+### 3. Ejecución Manual (GitHub Actions)
+
+Si quieres forzar una actualización de precios ahora mismo sin esperar a la hora programada:
+
+1. Ve a la pestaña **Actions** en tu repositorio de GitHub.
+2. En la lista de la izquierda, selecciona el flujo de trabajo **Scrape Prices**.
+3. A la derecha, verás un botón desplegable llamado **Run workflow**.
+4. Haz clic en él y pulsa el botón verde **Run workflow**.
+5. En unos segundos, aparecerá una nueva ejecución en la lista y, al terminar (1-2 min), se actualizará la gráfica y recibirás alertas si hay bajada de precio.
+
+### 4. Despliegue en GitHub Pages
+
+Para ver la gráfica online:
+1. Sube este código a GitHub.
+2. Ve a **Settings** > **Pages**.
+3. En "Source", selecciona `Deploy from a branch`.
+4. En "Branch", selecciona `main` (o la rama donde esté tu código) y la carpeta `/` (root).
+5. Guarda los cambios. Tu web estará disponible en `https://tu-usuario.github.io/tu-repo/`.
+
+### 5. Ejecutar localmente (Desarrollo)
 
 Si quieres probar el scraper en tu máquina:
 
@@ -90,12 +109,3 @@ Si quieres probar el scraper en tu máquina:
    python -m http.server
    ```
    Luego abre `http://localhost:8000` en tu navegador.
-
-### 4. Despliegue en GitHub Pages
-
-Para ver la gráfica online:
-1. Sube este código a GitHub.
-2. Ve a **Settings** > **Pages**.
-3. En "Source", selecciona `Deploy from a branch`.
-4. En "Branch", selecciona `main` (o la rama donde esté tu código) y la carpeta `/` (root).
-5. Guarda los cambios. Tu web estará disponible en `https://tu-usuario.github.io/tu-repo/`.
