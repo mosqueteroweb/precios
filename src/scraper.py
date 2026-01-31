@@ -9,7 +9,7 @@ import os
 CONFIG_FILE = 'config.json'
 DATA_FILE = 'data/prices.json'
 
-def send_telegram_alert(item, price):
+async def send_telegram_alert(item, price):
     """
     Sends a Telegram alert when price drops below target.
     """
@@ -42,7 +42,11 @@ def send_telegram_alert(item, price):
     }
 
     try:
-        response = requests.post(api_url, json=payload, timeout=10)
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.post(api_url, json=payload, timeout=10)
+        )
         if response.status_code == 200:
             print(f"Telegram alert sent for {variant} at {price}€")
         else:
@@ -297,7 +301,7 @@ async def scrape_gmktec_official(page, item):
         target_price = item.get('target_price')
         if target_price and final_price <= target_price:
             print(f"Price {final_price} is below target {target_price}! Sending alert...")
-            send_telegram_alert(item, final_price)
+            await send_telegram_alert(item, final_price)
 
         return {
             "timestamp": datetime.datetime.now().isoformat(),
@@ -348,7 +352,7 @@ async def scrape_site(page, item):
             target_price = item.get('target_price')
             if price and target_price and price <= target_price:
                 print(f"Price {price} is below target {target_price}! Sending alert...")
-                send_telegram_alert(item, price)
+                await send_telegram_alert(item, price)
 
             return {
                 "timestamp": datetime.datetime.now().isoformat(),
