@@ -2,7 +2,7 @@ name: Scrape Prices
 
 on:
   schedule:
-    - cron: '0 9,21 * * *' # Runs at 09:00 and 21:00 UTC
+    - cron: '0 * * * *' # Runs every hour
   workflow_dispatch: # Allows manual trigger
 
 permissions:
