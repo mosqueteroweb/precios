@@ -2,6 +2,7 @@ import json
 import re
 import datetime
 import asyncio
+import random
 import requests
 from playwright.async_api import async_playwright
 import os
@@ -414,6 +415,11 @@ async def scrape_amazon(page, item):
 
     print(f"Scraping Amazon for {target_ram} RAM...")
 
+    # Random delay to stagger requests and be more human-like
+    delay = random.uniform(5, 15)
+    print(f"Waiting {delay:.1f}s before scraping Amazon...")
+    await asyncio.sleep(delay)
+
     try:
         await page.goto(url, timeout=60000)
         await page.wait_for_timeout(2000) # Wait for potential dynamic load
@@ -457,7 +463,14 @@ async def scrape_amazon(page, item):
 
         if not base_price:
             print("No valid price found on Amazon page.")
-            return None
+            return {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "variant": target_ram,
+                "site": site_name,
+                "price": None,
+                "url": url,
+                "error": "Precio no encontrado"
+            }
 
         # 2. Check for Coupons
         # Look for text like "Aplicar cupón de X €" or checkbox labels
@@ -515,8 +528,28 @@ async def scrape_amazon(page, item):
                  if promo_div:
                       text = await promo_div.inner_text()
                       print(f"Found promo text: {text}")
-                      # logic to parse text... similar to above
-                      # (Simplification: assuming label method catches most check-box coupons)
+
+                      # Look for currency amount
+                      amount_match = re.search(r'(\d+[\.,]?\d*)\s?€', text)
+                      if not amount_match:
+                           amount_match = re.search(r'€\s?(\d+[\.,]?\d*)', text)
+
+                      if amount_match:
+                          val = parse_price(amount_match.group(1))
+                          if val:
+                               print(f"Detected coupon value from promo text: {val}€")
+                               discount_amount += val
+                               coupon_text = text
+
+                      # Look for percentage if no amount found (or addition?)
+                      if discount_amount == 0:
+                          percent_match = re.search(r'(\d+)%', text)
+                          if percent_match:
+                              pct = float(percent_match.group(1))
+                              val = base_price * (pct / 100.0)
+                              print(f"Detected coupon percentage from promo text: {pct}% -> {val}€")
+                              discount_amount += val
+                              coupon_text = text
 
         except Exception as e:
             print(f"Error checking coupons: {e}")
@@ -545,7 +578,15 @@ async def scrape_amazon(page, item):
 
     except Exception as e:
         print(f"Error scraping Amazon {target_ram}: {e}")
-        return None
+        # Return error record
+        return {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "variant": target_ram,
+            "site": site_name,
+            "price": None,
+            "url": url,
+            "error": "Error de lectura"
+        }
 
 async def scrape_site(page, item):
     """
