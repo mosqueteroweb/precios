@@ -92,6 +92,11 @@
             const chronoData = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
             chronoData.forEach(entry => {
+                // Skip entries without valid price for the chart
+                if (entry.price === null || entry.price === undefined) {
+                    return;
+                }
+
                 const label = `${entry.variant} - ${entry.site}`;
                 if (!datasets[label]) {
                     // Assign specific colors
@@ -236,11 +241,16 @@
                 };
                 const dateStr = new Date(entry.timestamp).toLocaleString('es-ES', dateOpts);
 
+                let priceDisplay = entry.price ? `${entry.price} €` : '<span style="color:red">Error de lectura</span>';
+                if (entry.error) {
+                     priceDisplay = `<span style="color:red; font-size: 0.9em;">${entry.error}</span>`;
+                }
+
                 row.innerHTML = `
                     <td>${dateStr}</td>
                     <td>${entry.variant}</td>
                     <td>${entry.site}</td>
-                    <td>${entry.price} €</td>
+                    <td>${priceDisplay}</td>
                     <td><a href="${entry.url}" target="_blank">Ver</a></td>
                 `;
                 tbody.appendChild(row);

@@ -16,5 +16,23 @@
     "target_ram": "128GB",
     "target_price": 2200,
     "selector": "label:has-text('128GB')"
+  },
+  {
+    "active": true,
+    "type": "amazon",
+    "site_name": "Amazon ES",
+    "url": "https://www.amazon.es/dp/B0FK2299GS",
+    "target_ram": "96GB",
+    "target_price": 1700,
+    "selector": "#corePriceDisplay_desktop_feature_div .a-price .a-offscreen"
+  },
+  {
+    "active": true,
+    "type": "amazon",
+    "site_name": "Amazon ES",
+    "url": "https://www.amazon.es/dp/B0F6X332N6",
+    "target_ram": "128GB",
+    "target_price": 2200,
+    "selector": "#corePriceDisplay_desktop_feature_div .a-price .a-offscreen"
   }
 ]
