@@ -403,12 +403,158 @@ def clean_price_history(history_data, reference_date=None):
 
     return final_history
 
+async def scrape_amazon(page, item):
+    """
+    Specific scraping logic for Amazon.
+    Finds main price and subtracts any detected coupon.
+    """
+    url = item.get('url')
+    target_ram = item.get('target_ram')
+    site_name = item.get('site_name')
+
+    print(f"Scraping Amazon for {target_ram} RAM...")
+
+    try:
+        await page.goto(url, timeout=60000)
+        await page.wait_for_timeout(2000) # Wait for potential dynamic load
+
+        # 1. Get Base Price
+        # Try multiple selectors
+        price_selectors = [
+            '#corePriceDisplay_desktop_feature_div .a-price .a-offscreen',
+            '#corePrice_feature_div .a-price .a-offscreen',
+            '.a-price .a-offscreen',
+            '#price_inside_buybox'
+        ]
+
+        base_price = None
+        for sel in price_selectors:
+            try:
+                el = await page.query_selector(sel)
+                if el:
+                    text = await el.inner_text()
+                    p = parse_price(text)
+                    if p and p > 0:
+                        base_price = p
+                        print(f"Found base price: {base_price} (using {sel})")
+                        break
+            except Exception:
+                continue
+
+        if not base_price:
+            print("Base price not found via selectors. Trying fallback text search...")
+            # Fallback: search for currency in buybox
+            buybox = await page.query_selector('#buybox')
+            if buybox:
+                text = await buybox.inner_text()
+                matches = re.findall(r'€\s?[\d.,]+|[\d.,]+\s?€', text)
+                for m in matches:
+                     v = parse_price(m)
+                     if v and v > 500: # Sanity check
+                         base_price = v
+                         print(f"Found base price via text: {base_price}")
+                         break
+
+        if not base_price:
+            print("No valid price found on Amazon page.")
+            return None
+
+        # 2. Check for Coupons
+        # Look for text like "Aplicar cupón de X €" or checkbox labels
+        discount_amount = 0
+        coupon_text = ""
+
+        # Common coupon selectors
+        # Usually inside a div with id like 'promoPriceBlockMessage_feature_div' or similar
+        # Or look for label containing "cupón"
+
+        try:
+            # Strategy: Find any element containing "cupón" or "coupon" near the price
+            # We can look for labels associated with checkboxes
+
+            # Find all labels that might be coupons
+            labels = await page.query_selector_all('label')
+            for label in labels:
+                if await label.is_visible():
+                    text = await label.inner_text()
+                    lower_text = text.lower()
+                    if any(k in lower_text for k in ["cupón", "coupon", "ahorra", "save", "discount"]):
+                        # Check if it has a price or percentage
+                        # "Aplicar cupón de 100 €"
+                        # "Apply 5% coupon"
+                        print(f"Found potential coupon label: {text}")
+
+                        # Extract amount
+                        # Look for currency amount first
+                        amount_match = re.search(r'(\d+[\.,]?\d*)\s?€', text)
+                        if not amount_match:
+                             amount_match = re.search(r'€\s?(\d+[\.,]?\d*)', text)
+
+                        if amount_match:
+                            val = parse_price(amount_match.group(1)) # or group 0? group(1) is the number
+                            # parse_price handles strings nicely
+                            if val:
+                                 print(f"Detected coupon value: {val}€")
+                                 discount_amount += val
+                                 coupon_text = text
+                                 break # Assume one main coupon
+
+                        # Look for percentage
+                        percent_match = re.search(r'(\d+)%', text)
+                        if percent_match:
+                            pct = float(percent_match.group(1))
+                            val = base_price * (pct / 100.0)
+                            print(f"Detected coupon percentage: {pct}% -> {val}€")
+                            discount_amount += val
+                            coupon_text = text
+                            break
+
+            # If no label found, try searching for "promoPriceBlockMessage" text
+            if discount_amount == 0:
+                 promo_div = await page.query_selector('#promoPriceBlockMessage_feature_div')
+                 if promo_div:
+                      text = await promo_div.inner_text()
+                      print(f"Found promo text: {text}")
+                      # logic to parse text... similar to above
+                      # (Simplification: assuming label method catches most check-box coupons)
+
+        except Exception as e:
+            print(f"Error checking coupons: {e}")
+
+        final_price = base_price - discount_amount
+        print(f"Final Price: {final_price} (Base: {base_price} - Discount: {discount_amount})")
+
+        # Alert Check
+        target_price = item.get('target_price')
+        if target_price and final_price <= target_price:
+            print(f"Price {final_price} is below target {target_price}! Sending alert...")
+            await send_telegram_alert(item, final_price)
+
+        return {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "variant": target_ram,
+            "site": site_name,
+            "price": final_price,
+            "url": url,
+            "metadata": {
+                "base_price": base_price,
+                "discount_applied": discount_amount,
+                "coupon_text": coupon_text
+            }
+        }
+
+    except Exception as e:
+        print(f"Error scraping Amazon {target_ram}: {e}")
+        return None
+
 async def scrape_site(page, item):
     """
     Scrapes a single item. Dispatches to specific logic if needed.
     """
     if item.get('type') == 'gmktec_official':
         return await scrape_gmktec_official(page, item)
+    elif item.get('type') == 'amazon':
+        return await scrape_amazon(page, item)
 
     url = item.get('url')
     selector = item.get('selector')
