@@ -63,7 +63,8 @@
 
         async function loadData() {
             try {
-                const response = await fetch('data/prices.json');
+                // Add timestamp to prevent caching
+                const response = await fetch('data/prices.json?v=' + new Date().getTime());
                 const data = await response.json();
 
                 if (!data || data.length === 0) {
