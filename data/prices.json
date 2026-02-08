@@ -1726,5 +1726,53 @@
         "GMKtec"
       ]
     }
+  },
+  {
+    "timestamp": "2026-02-08T12:35:03.413697",
+    "variant": "96GB",
+    "site": "Amazon ES",
+    "price": null,
+    "url": "https://www.amazon.es/dp/B0FK2299GS",
+    "error": "Precio no encontrado"
+  },
+  {
+    "timestamp": "2026-02-08T12:35:07.126937",
+    "variant": "128GB",
+    "site": "GMKtec Official",
+    "price": 2409.0,
+    "url": "https://de.gmktec.com/es/products/gmktec-evo-x2-amd-ryzen%E2%84%A2-ai-max-395-mini-pc-1",
+    "metadata": {
+      "base_price": 2459.0,
+      "discount_applied": 50.0,
+      "coupons_found": [
+        "GMKEVO50OFF",
+        "GMKTEC",
+        "GMKtec"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-02-08T12:35:08.095882",
+    "variant": "96GB",
+    "site": "GMKtec Official",
+    "price": 1809.0,
+    "url": "https://de.gmktec.com/es/products/gmktec-evo-x2-amd-ryzen%E2%84%A2-ai-max-395-mini-pc-1",
+    "metadata": {
+      "base_price": 1859.0,
+      "discount_applied": 50.0,
+      "coupons_found": [
+        "GMKEVO50OFF",
+        "GMKTEC",
+        "GMKtec"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-02-08T12:35:09.832998",
+    "variant": "128GB",
+    "site": "Amazon ES",
+    "price": null,
+    "url": "https://www.amazon.es/dp/B0F6X332N6",
+    "error": "Precio no encontrado"
   }
 ]
