@@ -1,6 +1,12 @@
 import unittest
 import sys
 import os
+from unittest.mock import MagicMock
+
+# Mock requests before importing scraper
+sys.modules['requests'] = MagicMock()
+sys.modules['playwright'] = MagicMock()
+sys.modules['playwright.async_api'] = MagicMock()
 
 # Add src to python path to import scraper
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))

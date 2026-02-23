@@ -3,6 +3,12 @@ import datetime
 import sys
 import os
 import json
+from unittest.mock import MagicMock
+
+# Mock requests before importing scraper
+sys.modules['requests'] = MagicMock()
+sys.modules['playwright'] = MagicMock()
+sys.modules['playwright.async_api'] = MagicMock()
 
 # Add src to path to import scraper
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
