@@ -11,6 +11,7 @@ DATA_FILE = 'data/prices.json'
 
 # Compile regex at module level for performance
 COUPON_PATTERN = re.compile(r'(GMK\w+)')
+PRICE_CLEAN_PATTERN = re.compile(r'[^\d.,]')
 
 async def send_telegram_alert(item, price):
     """
@@ -66,7 +67,7 @@ def parse_price(price_str):
         return None
 
     # Remove non-numeric characters except potential decimal/thousand separators
-    clean_str = re.sub(r'[^\d.,]', '', price_str)
+    clean_str = PRICE_CLEAN_PATTERN.sub('', price_str)
 
     # If both , and . are present:
     if ',' in clean_str and '.' in clean_str:
