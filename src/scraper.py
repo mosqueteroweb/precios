@@ -147,20 +147,31 @@ async def scrape_gmktec_official(page, item):
         labels = await page.query_selector_all('label')
         variant_clicked = False
 
-        # Strategy 1: Click Visible Labels
-        for label in labels:
-            if await label.is_visible():
-                text = await label.inner_text()
-                # Normalize text: "96 GB De RAM" vs "96GB RAM"
-                normalized_text = text.lower().replace(" ", "")
-                normalized_target = target_ram.lower().replace(" ", "")
+        # Strategy 1: Click Visible Labels (Optimized with page.evaluate)
+        match_index = await page.evaluate("""
+            (target) => {
+                const labels = Array.from(document.querySelectorAll('label'));
+                for (let i = 0; i < labels.length; i++) {
+                    const label = labels[i];
+                    const isVisible = !!(label.offsetWidth || label.offsetHeight || label.getClientRects().length);
+                    if (isVisible) {
+                        const text = label.innerText.toLowerCase().replace(/\\s/g, "");
+                        if (text.includes(target)) {
+                            return i;
+                        }
+                    }
+                }
+                return -1;
+            }
+        """, target_ram.lower().replace(" ", ""))
 
-                if normalized_target in normalized_text:
-                    print(f"Found visible variant label: '{text.strip()}' -> Clicking")
-                    await label.click()
-                    variant_clicked = True
-                    await page.wait_for_timeout(2000)
-                    break
+        if match_index != -1:
+            label = labels[match_index]
+            text = await label.inner_text()
+            print(f"Found visible variant label: '{text.strip()}' -> Clicking")
+            await label.click()
+            variant_clicked = True
+            await page.wait_for_timeout(2000)
 
         # Strategy 2: Click Hidden Radio Inputs directly (force)
         if not variant_clicked:
