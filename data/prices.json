@@ -96,38 +96,6 @@
     }
   },
   {
-    "timestamp": "2026-02-10T01:54:02.106043",
-    "variant": "128GB",
-    "site": "GMKtec Official",
-    "price": 2409.0,
-    "url": "https://de.gmktec.com/es/products/gmktec-evo-x2-amd-ryzen%E2%84%A2-ai-max-395-mini-pc-1",
-    "metadata": {
-      "base_price": 2459.0,
-      "discount_applied": 50.0,
-      "coupons_found": [
-        "GMKtec",
-        "GMKTEC",
-        "GMKEVO50OFF"
-      ]
-    }
-  },
-  {
-    "timestamp": "2026-02-10T01:54:02.559630",
-    "variant": "96GB",
-    "site": "GMKtec Official",
-    "price": 1809.0,
-    "url": "https://de.gmktec.com/es/products/gmktec-evo-x2-amd-ryzen%E2%84%A2-ai-max-395-mini-pc-1",
-    "metadata": {
-      "base_price": 1859.0,
-      "discount_applied": 50.0,
-      "coupons_found": [
-        "GMKtec",
-        "GMKTEC",
-        "GMKEVO50OFF"
-      ]
-    }
-  },
-  {
     "timestamp": "2026-02-10T06:58:24.026046",
     "variant": "128GB",
     "site": "GMKtec Official",
@@ -1869,6 +1837,38 @@
     "url": "https://de.gmktec.com/es/products/gmktec-evo-x2-amd-ryzen%E2%84%A2-ai-max-395-mini-pc-1",
     "metadata": {
       "base_price": 2459.0,
+      "discount_applied": 50.0,
+      "coupons_found": [
+        "GMKTEC",
+        "GMKEVO50OFF",
+        "GMKtec"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-02-24T06:53:33.101536",
+    "variant": "128GB",
+    "site": "GMKtec Official",
+    "price": 2409.0,
+    "url": "https://de.gmktec.com/es/products/gmktec-evo-x2-amd-ryzen%E2%84%A2-ai-max-395-mini-pc-1",
+    "metadata": {
+      "base_price": 2459.0,
+      "discount_applied": 50.0,
+      "coupons_found": [
+        "GMKTEC",
+        "GMKEVO50OFF",
+        "GMKtec"
+      ]
+    }
+  },
+  {
+    "timestamp": "2026-02-24T06:53:33.579203",
+    "variant": "96GB",
+    "site": "GMKtec Official",
+    "price": 1809.0,
+    "url": "https://de.gmktec.com/es/products/gmktec-evo-x2-amd-ryzen%E2%84%A2-ai-max-395-mini-pc-1",
+    "metadata": {
+      "base_price": 1859.0,
       "discount_applied": 50.0,
       "coupons_found": [
         "GMKTEC",
