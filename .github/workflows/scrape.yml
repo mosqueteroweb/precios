@@ -1,8 +1,6 @@
 name: Scrape Prices
 
 on:
-  schedule:
-    - cron: '0 */6 * * *' # Runs every 4 hours
   workflow_dispatch: # Allows manual trigger
 
 permissions:
